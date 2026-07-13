@@ -10,7 +10,7 @@ NIR chemometrics project: PLS regression models for diesel fuel property predict
 
 ## Workflow
 
-Run [Untitled.ipynb](Untitled.ipynb) top-to-bottom:
+Run [nir_diesel_pls.ipynb](nir_diesel_pls.ipynb) top-to-bottom:
 
 | Cell | Content |
 |------|---------|
@@ -40,14 +40,55 @@ reports/
   model_summary.csv
 models/
   pls_BP50.joblib … pls_VISC.joblib
+  manifest.json          # inference config (generated)
+src/nir_pls/             # inference package
+predict.py               # CLI entry point
 ```
+
+## Inference (Phase 11)
+
+After running the notebook through Cell G, build the inference manifest once:
+
+```bash
+python scripts/build_manifest.py
+```
+
+Predict properties from a spectrum file:
+
+```bash
+python predict.py data/diesel_spec.csv --sample-id 17366
+python predict.py data/diesel_spec.csv --properties VISC,BP50 --json
+python predict.py data/diesel_spec.csv --include-weak   # include CN, FLASH
+```
+
+Run inference tests:
+
+```bash
+python -m unittest tests.test_inference -v
+```
+
+### Deployable properties (from hold-out RPD)
+
+| Property | RPD | Tier | Deploy? |
+|----------|-----|------|---------|
+| D4052 | 14.86 | Good quantitative | Yes |
+| TOTAL | 10.21 | Good quantitative | Yes |
+| BP50 | 4.52 | Good quantitative | Yes |
+| VISC | 3.52 | Good quantitative | Yes |
+| FREEZE | 2.30 | Quantitative screening | Yes (caution) |
+| CN | 1.60 | Rough screening | No (use `--include-weak`) |
+| FLASH | 1.53 | Not usable | No (use `--include-weak`) |
+
+### Applicability domain
+
+Each prediction includes Hotelling T² and Q residual checks against the calibration set (PCA, 10 LVs, 95% limits). Samples flagged **OUT-OF-DOMAIN** were chemically extreme in training (67 T² outliers) — treat predictions with caution.
 
 ## Environment
 
 ```bash
 conda env create -f environment.yml
 conda activate nir-pls
-jupyter notebook Untitled.ipynb
+jupyter notebook nir_diesel_pls.ipynb
 ```
 
 ## RPD interpretation
